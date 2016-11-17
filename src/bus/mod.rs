@@ -1,5 +1,8 @@
 //! Contains traits for implementations of buses supported by PN532
 
+#[cfg(with_i2c)]
+pub mod i2c;
+
 use ::error::{WaitError, WaitResult};
 use std::time::Duration;
 use std::{time, thread};
