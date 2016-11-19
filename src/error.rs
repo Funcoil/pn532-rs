@@ -147,3 +147,23 @@ impl<E: error::Error> error::Error for SendError<E> {
         }
     }
 }
+
+#[derive(Debug)]
+pub enum CommError<R: error::Error, W: error::Error> {
+    SendError(SendError<W>),
+    RecvError(RecvError<R>),
+}
+
+impl<R: error::Error, W: error::Error> From<SendError<W>> for CommError<R, W> {
+    fn from(e: SendError<W>) -> Self {
+        CommError::SendError(e)
+    }
+}
+
+impl<R: error::Error, W: error::Error> From<RecvError<R>> for CommError<R, W> {
+    fn from(e: RecvError<R>) -> Self {
+        CommError::RecvError(e)
+    }
+}
+
+pub type CommResult<T, R, W> = Result<T, CommError<R, W>>;

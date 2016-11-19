@@ -9,4 +9,6 @@ extern crate assert_matches;
 
 pub mod error;
 pub mod bus;
-pub mod device;
+mod device;
+
+pub use device::PN532;

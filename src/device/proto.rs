@@ -1,7 +1,7 @@
 use ::bus;
 use std::error::Error;
 use std::time::Duration;
-use ::error::{DataError, ChecksumType, RecvError, SendError, WaitError, WaitResult};
+use ::error::{DataError, ChecksumType, RecvError, SendError, WaitError, WaitResult, CommResult};
 use ::std::default::Default;
 
 // State machine to parse Preamble.
@@ -101,6 +101,12 @@ impl<D: bus::WaitRead + bus::BusWrite> PN532Proto<D> {
         outbuf[5..(5 + data.len())].copy_from_slice(data);
 
         self.device.write(&outbuf[0..(data.len() + 6)]).map_err(Into::into)
+    }
+
+    pub fn send_wait_ack(&mut self, data: &[u8]) -> ::error::CommResult<(), D::ReadError, D::WriteError> {
+        try!(self.send(data));
+        try!(self.recv_ack());
+        Ok(())
     }
 
     fn process_packet(recved: &[u8], dst: &mut [u8]) -> Result<usize, RecvError<D::ReadError>> {
