@@ -234,4 +234,23 @@ impl <D: bus::WaitRead + bus::BusWrite> PN532<D> {
 
         Ok(res)
     }
+
+    pub fn send_recv_data(&mut self, tag_number: Limit, data_out: &[u8], data_in: &mut [u8]) -> CommResult<usize, D::ReadError, D::WriteError> {
+        use ::std::cmp::min;
+
+        let mut buf = [0u8; 256];
+        buf[0] = 0x40;
+        buf[1] = tag_number.into();
+        let to_copy = min(buf.len(), data_out.len());
+        buf[2..(2 + to_copy)].copy_from_slice(&data_out[0..to_copy]);
+
+        try!(self.device.send_wait_ack(&buf[..(2 + to_copy)]));
+        let len = try!(self.device.recv_reply_ack(&mut buf));
+
+        // TODO: check buf[0] == 0x41 && buf[2] is status OK
+        let to_copy = min(len, data_in.len());
+        data_in[0..to_copy].copy_from_slice(&buf);
+
+        Ok(to_copy)
+    }
 }
