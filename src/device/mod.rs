@@ -186,7 +186,7 @@ impl <D: bus::WaitRead + bus::BusWrite> PN532<D> {
 
         try!(self.device.send_wait_ack(cmd));
         let mut rcvbuf = [0u8];
-        let len = try!(self.device.recv(&mut rcvbuf));
+        let len = try!(self.device.recv_reply_ack(&mut rcvbuf));
         if len > 0 {
             if rcvbuf[0] == 0x15 {
                 Ok(())
@@ -203,9 +203,8 @@ impl <D: bus::WaitRead + bus::BusWrite> PN532<D> {
         buf[0] = 0x4A;
         let len = op_data.fill_buf(&mut buf[1..]);
 
-        try!(self.device.send(&buf[..(1 + len)]));
-        try!(self.device.recv_ack());
-        try!(self.device.recv(&mut buf));
+        try!(self.device.send_wait_ack(&buf[..(1 + len)]));
+        try!(self.device.recv_reply_ack(&mut buf));
 
         // TODO check buf[0] == 0x4B, buf[1] <= 2
         let ntags = buf[1] as usize;

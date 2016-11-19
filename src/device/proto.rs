@@ -102,6 +102,11 @@ impl<D: bus::WaitRead + bus::BusWrite> PN532Proto<D> {
         self.device.write(&outbuf[0..(data.len() + 6)]).map_err(Into::into)
     }
 
+    pub fn send_ack(&mut self) -> Result<(), SendError<D::WriteError>> {
+        let buf = [0x00, 0xFF, 0x00, 0xFF];
+        self.device.write(&buf).map_err(Into::into)
+    }
+
     pub fn send_wait_ack(&mut self, data: &[u8]) -> CommResult<(), D::ReadError, D::WriteError> {
         try!(self.send(data));
         try!(self.recv_ack());
@@ -165,6 +170,12 @@ impl<D: bus::WaitRead + bus::BusWrite> PN532Proto<D> {
         }
 
         Err(RecvError::UnexpectedEnd)
+    }
+
+    pub fn recv_reply_ack(&mut self, data: &mut[u8]) -> CommResult<usize, D::ReadError, D::WriteError> {
+        let len = try!(self.recv(data));
+        try!(self.send_ack());
+        Ok(len)
     }
 
     pub fn recv_with_timeout(&mut self, data: &mut[u8], timeout: Duration) -> WaitResult<usize, RecvError<D::ReadError>> {
