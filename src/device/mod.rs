@@ -101,28 +101,40 @@ impl<'a> ListTagData<'a> {
 
         match *self {
             ISO14443A(_, Some(ref data)) => {
+                buf[1] = 0x00;
                 let to_copy = min(buf.len(), data.len());
-                buf[1..(1 + to_copy)].copy_from_slice(&data[0..to_copy]);
+                buf[2..(2 + to_copy)].copy_from_slice(&data[0..to_copy]);
                 to_copy + 1
             },
-            ISO14443B(_, ref afi, Some(ref polling_method)) => {
-                buf[1] = *afi;
-                buf[2] = polling_method.code();
-                3
-            },
-            ISO14443B(_, ref afi, None) => {
-                buf[1] = *afi;
+            ISO14443A(_, None) => {
+                buf[1] = 0x00;
                 2
             },
+            ISO14443B(_, ref afi, Some(ref polling_method)) => {
+                buf[1] = 0x03;
+                buf[2] = *afi;
+                buf[3] = polling_method.code();
+                4
+            },
+            ISO14443B(_, ref afi, None) => {
+                buf[1] = 0x03;
+                buf[2] = *afi;
+                3
+            },
             FeliCa212(_, ref payload) => {
-                buf[1..6].copy_from_slice(payload);
-                6
+                buf[1] = 0x01;
+                buf[2..7].copy_from_slice(payload);
+                7
             },
             FeliCa424(_, ref payload) => {
-                buf[1..6].copy_from_slice(payload);
-                6
+                buf[1] = 0x02;
+                buf[2..7].copy_from_slice(payload);
+                7
             },
-            _ => 1,
+            JewelTag => {
+                buf[1] = 0x04;
+                2
+            },
         }
     }
 
