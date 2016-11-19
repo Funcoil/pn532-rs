@@ -8,3 +8,6 @@ with_i2c = ["i2cdev"]
 
 [dependencies]
 i2cdev = { version = "0.3", optional = true }
+
+[dev-dependencies]
+assert_matches = "1"
