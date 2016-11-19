@@ -11,5 +11,5 @@ pub mod error;
 pub mod bus;
 mod device;
 
-pub use device::{PN532, SAMMode, PollingMethod, ListTagData};
+pub use device::{PN532, SAMMode, PollingMethod, ListTagData, FeliCaBaudrate};
 pub use device::Limit as ListTagLimit;

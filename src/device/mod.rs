@@ -72,10 +72,24 @@ impl From<Limit> for u8 {
     }
 }
 
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum FeliCaBaudrate {
+    Br212,
+    Br424,
+}
+
+impl FeliCaBaudrate {
+    fn code(self) -> u8 {
+        match self {
+            FeliCaBaudrate::Br212 => 0x01,
+            FeliCaBaudrate::Br424 => 0x02,
+        }
+    }
+}
+
 pub enum ListTagData<'a> {
     ISO14443A(Limit, Option<&'a[u8]>),
-    FeliCa212(Limit, [u8; 5]),
-    FeliCa424(Limit, [u8; 5]),
+    FeliCa(Limit, FeliCaBaudrate, [u8; 5]),
     ISO14443B(Limit, u8, Option<PollingMethod>),
     JewelTag,
 }
@@ -87,8 +101,7 @@ impl<'a> ListTagData<'a> {
         match *self {
             ISO14443A(ref l, _) => *l,
             ISO14443B(ref l, _, _) => *l,
-            FeliCa212(ref l, _) => *l,
-            FeliCa424(ref l, _) => *l,
+            FeliCa(ref l, _, _) => *l,
             JewelTag => Limit::One,
         }.into()
     }
@@ -121,13 +134,8 @@ impl<'a> ListTagData<'a> {
                 buf[2] = *afi;
                 3
             },
-            FeliCa212(_, ref payload) => {
-                buf[1] = 0x01;
-                buf[2..7].copy_from_slice(payload);
-                7
-            },
-            FeliCa424(_, ref payload) => {
-                buf[1] = 0x02;
+            FeliCa(_, br, ref payload) => {
+                buf[1] = br.code();
                 buf[2..7].copy_from_slice(payload);
                 7
             },
@@ -152,12 +160,7 @@ impl<'a> ListTagData<'a> {
                 let atrib_res_len = data[12] as usize;
                 12 + 1 + atrib_res_len
             },
-            FeliCa212(_, _) => {
-                // TODO: check
-                let pol_res_len = data[1] as usize;
-                pol_res_len
-            },
-            FeliCa424(_, _) => {
+            FeliCa(_, _, _) => {
                 // TODO: check
                 let pol_res_len = data[1] as usize;
                 pol_res_len
