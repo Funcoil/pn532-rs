@@ -1,6 +1,6 @@
 //! Contains traits for implementations of buses supported by PN532
 
-#[cfg(with_i2c)]
+#[cfg(feature = "with_i2c")]
 pub mod i2c;
 
 use ::error::{WaitError, WaitResult};
