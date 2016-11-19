@@ -1,6 +1,5 @@
 use ::bus;
-use std::error::Error;
-use std::time::Duration;
+use ::std::time::Duration;
 use ::error::{DataError, ChecksumType, RecvError, SendError, WaitError, WaitResult, CommResult};
 use ::std::default::Default;
 
@@ -103,7 +102,7 @@ impl<D: bus::WaitRead + bus::BusWrite> PN532Proto<D> {
         self.device.write(&outbuf[0..(data.len() + 6)]).map_err(Into::into)
     }
 
-    pub fn send_wait_ack(&mut self, data: &[u8]) -> ::error::CommResult<(), D::ReadError, D::WriteError> {
+    pub fn send_wait_ack(&mut self, data: &[u8]) -> CommResult<(), D::ReadError, D::WriteError> {
         try!(self.send(data));
         try!(self.recv_ack());
         Ok(())
@@ -168,7 +167,7 @@ impl<D: bus::WaitRead + bus::BusWrite> PN532Proto<D> {
         Err(RecvError::UnexpectedEnd)
     }
 
-    pub fn recv_with_timeout(&mut self, data: &mut[u8], timeout: ::std::time::Duration) -> WaitResult<usize, RecvError<D::ReadError>> {
+    pub fn recv_with_timeout(&mut self, data: &mut[u8], timeout: Duration) -> WaitResult<usize, RecvError<D::ReadError>> {
         let mut buf = [0u8; 32];
         let len = try!(self.device.wait_read_timeout(&mut buf, timeout).map_err(|e| e.map(RecvError::ReadError)));
 
@@ -261,7 +260,7 @@ mod test {
     impl<'a> BusWrite for BufSender<'a> {
         type WriteError = io::Error;
 
-        fn write(&mut self, buf: &[u8]) -> Result<(), io::Error> {
+        fn write(&mut self, _: &[u8]) -> Result<(), io::Error> {
             Ok(())
         }
     }

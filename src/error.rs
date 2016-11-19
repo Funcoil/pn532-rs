@@ -143,7 +143,7 @@ impl<E: error::Error> error::Error for SendError<E> {
     fn cause(&self) -> Option<&error::Error> {
         match *self {
             SendError::WriteError(ref e) => Some(e),
-            SendError::TooMuchData(l) => None,
+            SendError::TooMuchData(_) => None,
         }
     }
 }
