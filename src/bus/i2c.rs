@@ -6,7 +6,22 @@ impl<D: I2CDevice> BusRead for D {
     type ReadError = D::Error;
 
     fn read(&mut self, buf: &mut [u8]) -> Result<usize, Self::ReadError> {
-        self.read(buf).map(|_| buf.len())
+        let res = self.read(buf).map(|_| buf.len());
+        #[cfg(feature = "debug_communication")]
+        {
+            use std::io::Write;
+
+            if res.is_ok() {
+                let _ = write!(::std::io::stderr(), "Reading: ");
+                for b in buf {
+                    let _ = write!(::std::io::stderr(), "{:02X}", *b);
+                }
+                let _ = writeln!(::std::io::stderr(), "");
+            } else {
+                let _ = writeln!(::std::io::stderr(), "Error reading: {:?}", res);
+            }
+        }
+        res
     }
 }
 
@@ -14,6 +29,16 @@ impl<D: I2CDevice> BusWrite for D {
     type WriteError = D::Error;
 
     fn write(&mut self, buf: &[u8]) -> Result<(), Self::WriteError> {
+        #[cfg(feature = "debug_communication")]
+        {
+            use std::io::Write;
+
+            let _ = write!(::std::io::stderr(), "Writing: ");
+            for b in buf {
+                let _ = write!(::std::io::stderr(), "{:02X}", *b);
+            }
+            let _ = writeln!(::std::io::stderr(), "");
+        }
         self.write(buf)
     }
 }

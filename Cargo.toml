@@ -5,6 +5,7 @@ authors = ["Martin Habovštiak <martin.habovstiak@gmail.com>"]
 
 [features]
 with_i2c = ["i2cdev"]
+debug_communication = []
 
 [dependencies]
 i2cdev = { version = "0.3", optional = true }
