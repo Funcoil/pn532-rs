@@ -1,5 +1,7 @@
 //! Crate for communication with PN532 (NFC chip by NXP)
 
+extern crate core;
+
 #[cfg(feature = "with_i2c")]
 extern crate i2cdev;
 
@@ -11,5 +13,21 @@ pub mod error;
 pub mod bus;
 mod device;
 
-pub use device::{PN532, SAMMode, PollingMethod, ListTagData, FeliCaBaudrate};
-pub use device::Limit as ListTagLimit;
+pub use device::{PN532, SAMMode};
+
+pub mod tags {
+    pub use ::device::tags_internal::{
+        TagBuffer,
+        Tags,
+        Tag,
+        TagNumLimit,
+        ISO14443A,
+        ISO14443ATagInfo,
+        ISO14443AListOptions,
+        PollingMethod,
+        ISO14443BListOptions,
+        FeliCaBaudrate,
+        FeliCaListOptions,
+        JewelTagListOptions
+    };
+}
