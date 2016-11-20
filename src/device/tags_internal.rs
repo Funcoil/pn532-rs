@@ -22,6 +22,16 @@ pub struct TagBuffer {
     buf: [u8; 256],
 }
 
+impl TagBuffer {
+    pub fn new() -> Self {
+        // This is safe because buffer can't be read before it's written
+        // and even then, just what's been written.
+        unsafe {
+            ::core::mem::uninitialized()
+        }
+    }
+}
+
 pub struct Tags<'buf, 'pn, T: for<'o> TagType<'o, 'buf>, P: 'pn + PN532Transceive> {
     buf: &'buf [u8; 256],
     // pn532 which detected the tag
