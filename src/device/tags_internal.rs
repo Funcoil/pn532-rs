@@ -13,6 +13,8 @@ pub trait TagResponse<'s>: 's + Sized {
     }
 }
 
+pub trait TagResponseMarker<'s>: TagResponse<'s> {}
+
 pub trait TagListOptions<'a> {
     type Response: TagResponse<'a>;
 

@@ -31,4 +31,5 @@ pub mod tags {
         JewelTagListOptions
         */
     };
+    pub use ::device::tags_internal::TagResponseMarker as TagResponse;
 }
