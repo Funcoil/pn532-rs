@@ -154,6 +154,28 @@ pub enum CommError<R: error::Error, W: error::Error> {
     RecvError(RecvError<R>),
 }
 
+impl<R: error::Error, W: error::Error> fmt::Display for CommError<R, W> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            CommError::SendError(ref e) => write!(f, "sending: {}", e),
+            CommError::RecvError(ref e) => write!(f, "receiving: {}", e),
+        }
+    }
+}
+
+impl<R: error::Error, W: error::Error> error::Error for CommError<R, W> {
+    fn description(&self) -> &str {
+        "communication error"
+    }
+
+    fn cause(&self) -> Option<&error::Error> {
+        match *self {
+            CommError::SendError(ref e) => Some(e),
+            CommError::RecvError(ref e) => Some(e),
+        }
+    }
+}
+
 impl<R: error::Error, W: error::Error> From<SendError<W>> for CommError<R, W> {
     fn from(e: SendError<W>) -> Self {
         CommError::SendError(e)
