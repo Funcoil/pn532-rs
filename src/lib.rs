@@ -22,12 +22,13 @@ pub mod tags {
         Tag,
         TagNumLimit,
         ISO14443A,
-        ISO14443ATagInfo,
         ISO14443AListOptions,
+        /*
         PollingMethod,
         ISO14443BListOptions,
         FeliCaBaudrate,
         FeliCaListOptions,
         JewelTagListOptions
+        */
     };
 }

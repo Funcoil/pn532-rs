@@ -1,13 +1,21 @@
 // ========================== Traits ==========================
-pub trait TagType<'opt, 'inf> {
-    type Options: TagListOptions;
-    type Info;
-
-    fn resp_len(response: &[u8]) -> usize;
-    fn info(response: &'inf [u8]) -> Self::Info;
+pub trait TagResponse<'s>: 's + Sized {
+    fn new(response: &'s [u8]) -> Self;
+    fn buf(&self) -> &[u8];
+    fn into_buf(self) -> &'s [u8];
+    fn len(&self) -> usize;
+    fn next(self) -> Self {
+        let len = self.len();
+        Self::new(&self.into_buf()[len..])
+    }
+    fn tag_num(&self) -> u8 {
+        self.buf()[0]
+    }
 }
 
-pub trait TagListOptions {
+pub trait TagListOptions<'a> {
+    type Response: TagResponse<'a>;
+
     fn fill_buf(&self, buf: &mut [u8]) -> usize;
 }
 
@@ -32,63 +40,59 @@ impl TagBuffer {
     }
 }
 
-pub struct Tags<'buf, 'pn, T: for<'o> TagType<'o, 'buf>, P: 'pn + PN532Transceive> {
-    buf: &'buf [u8; 256],
-    // pn532 which detected the tag
-    pn532: &'pn mut P,
-    _phantom: ::core::marker::PhantomData<T>,
+pub struct Tags<'p, R: for<'r> TagResponse<'r>, P: 'p + PN532Transceive> {
+    response: R,
+    // pn532 which detected the tags
+    pn532: &'p mut P,
+    count: usize,
 }
 
-impl<'buf, 'pn, T: for<'o> TagType<'o, 'buf>, P: 'pn + PN532Transceive> Tags<'buf, 'pn, T, P> {
-    pub unsafe fn new(buf: &'buf TagBuffer, pn532: &'pn mut P) -> Self {
+impl<'p, R: for<'r> TagResponse<'r>, P: 'p + PN532Transceive> Tags<'p, R, P> {
+    // Unsafe because TagBuffer is not guaranteed to be initialized
+    pub unsafe fn new(buf: &TagBuffer, pn532: &'p mut P) -> Self {
         Tags {
-            buf: &buf.buf,
+            response: R::new(&buf.buf[2..]),
             pn532: pn532,
-            _phantom: Default::default(),
+            count: buf.buf[1] as usize
         }
     }
 
     pub fn count(&self) -> usize {
-        self.buf[1] as usize
+        self.count
     }
 
-    pub fn first(self) -> Tag<'buf, 'pn, T, P> {
+    pub fn first(self) -> Tag<'p, R, P> {
+        let count = self.count();
         Tag {
-            data: &self.buf[3..],
-            device: self.pn532,
-            last: self.buf[1] == 1,
-            _phantom: Default::default(),
+            response: self.response,
+            pn532: self.pn532,
+            last: count != 2,
         }
     }
 }
 
-pub struct Tag<'buf, 'pn, T: for<'o> TagType<'o, 'buf>, P: 'pn + PN532Transceive> {
-    data: &'buf [u8],
-    device: &'pn mut P,
+pub struct Tag<'p, R: for<'r> TagResponse<'r>, P: 'p + PN532Transceive> {
+    response: R,
+    // pn532 which detected the tag
+    pn532: &'p mut P,
     last: bool,
-    _phantom: ::core::marker::PhantomData<T>,
 }
 
-impl<'buf, 'pn, T: for<'o> TagType<'o, 'buf>, P: 'pn + PN532Transceive> Tag<'buf, 'pn, T, P> {
+impl<'p, R: for<'r> TagResponse<'r>, P: 'p + PN532Transceive> Tag<'p, R, P> {
     pub fn next(self) -> Option<Self> {
         if self.last {
             None
         } else {
             Some(Tag {
-                data: &self.data[T::resp_len(self.data)..],
-                device: self.device,
+                response: self.response.next(),
+                pn532: self.pn532,
                 last: true,
-                _phantom: self._phantom,
             })
         }
     }
 
-    pub fn info<'o>(&self) -> <T as TagType<'o, 'buf>>::Info {
-        <T as TagType<'o, 'buf>>::info(self.data)
-    }
-
     pub fn transceive(&mut self, data_to_tag: &[u8], data_from_tag: &mut [u8]) -> Result<usize, P::TransceiveError> {
-        self.device.transceive(self.data[0], data_to_tag, data_from_tag)
+        self.pn532.transceive(self.response.tag_num(), data_to_tag, data_from_tag)
     }
 }
 
@@ -108,36 +112,6 @@ impl From<TagNumLimit> for u8 {
     }
 }
 
-pub struct ISO14443ATagInfo<'a> {
-    data: &'a [u8],
-}
-
-impl<'a> ISO14443ATagInfo<'a> {
-    pub fn sens_res(&self) -> u16 {
-        ((self.data[1] as u16) << 8) | (self.data[2] as u16)
-    }
-
-    pub fn sel_res(&self) -> u8 {
-        self.data[3]
-    }
-
-    pub fn id_len(&self) -> usize {
-        self.data[4] as usize
-    }
-
-    pub fn id(&self) -> &[u8] {
-        &self.data[5..(5 + self.id_len())]
-    }
-
-    pub fn ats_len(&self) -> usize {
-        self.data[5 + self.id_len()] as usize
-    }
-
-    pub fn ats(&self) -> &[u8] {
-        &self.data[(5 + self.id_len() + 1)..]
-    }
-}
-
 /*
 impl<'t, 'inf, 'pn, T: for<'o> TagType<'o, 'inf>, P: 'pn + PN532Transceive> IntoIterator for &'t Tags<'inf, 'pn, T, P> where Tags<'inf, 'pn, T, P>: 't {
     type IntoIter = TagInfoIter<'inf, T>;
@@ -153,7 +127,6 @@ impl<'t, 'inf, 'pn, T: for<'o> TagType<'o, 'inf>, P: 'pn + PN532Transceive> Into
 pub struct TagInfoIter<'inf, T: for<'o> TagType<'o, 'inf>> {
     data: &'inf [u8],
     cnt: u8,
-    _phantom: ::core::marker::PhantomData<T>,
 }
 
 impl<'opt, 'inf, T: TagType<'opt, 'inf>> Iterator for TagInfoIter<'inf, T> {
@@ -173,30 +146,74 @@ impl<'opt, 'inf, T: TagType<'opt, 'inf>> Iterator for TagInfoIter<'inf, T> {
 }
 */
 
-pub struct ISO14443A;
+pub struct ISO14443A<'a> {
+    data: &'a [u8],
+}
 
-impl<'inf, 'opt> TagType<'opt, 'inf> for ISO14443A {
-    type Info = ISO14443ATagInfo<'inf>;
-    type Options = ISO14443AListOptions<'opt>;
-
-    fn resp_len(response: &[u8]) -> usize {
-        let info = Self::info(response);
-        info.id_len() + info.ats_len() + 4
-    }
-
-    fn info(response: &'inf [u8]) -> Self::Info {
-        ISO14443ATagInfo {
-            data: response
+impl<'a> TagResponse<'a> for ISO14443A<'a> {
+    fn new(buf: &'a [u8]) -> Self {
+        ISO14443A {
+            data: buf,
         }
     }
+
+    fn len(&self) -> usize {
+        self.id_len() + self.ats_len() + 4
+    }
+
+    fn buf(&self) -> &[u8] {
+        self.data
+    }
+
+    fn into_buf(self) -> &'a [u8] {
+        self.data
+    }
 }
 
-pub struct ISO14443AListOptions<'a> {
+impl<'a> ISO14443A<'a> {
+    pub fn id_len(&self) -> usize {
+        self.data[4] as usize
+    }
+
+    pub fn ats_len(&self) -> usize {
+        self.data[5 + self.id_len()] as usize
+    }
+}
+
+impl<'r, 'p, P: PN532Transceive> Tag<'p, ISO14443A<'r>, P> where for<'r2> ISO14443A<'r>: TagResponse<'r2> {
+    pub fn sens_res(&self) -> u16 {
+        ((self.response.buf()[1] as u16) << 8) | (self.response.buf()[2] as u16)
+    }
+
+    pub fn sel_res(&self) -> u8 {
+        self.response.buf()[3]
+    }
+
+    pub fn id_len(&self) -> usize {
+        self.response.id_len()
+    }
+
+    pub fn id(&self) -> &[u8] {
+        &self.response.buf()[5..(5 + self.id_len())]
+    }
+
+    pub fn ats_len(&self) -> usize {
+        self.response.ats_len()
+    }
+
+    pub fn ats(&self) -> &[u8] {
+        &self.response.buf()[(5 + self.id_len() + 1)..]
+    }
+}
+
+pub struct ISO14443AListOptions<'id> {
     pub limit: TagNumLimit,
-    pub uid: Option<&'a [u8]>,
+    pub uid: Option<&'id [u8]>,
 }
 
-impl<'a> TagListOptions for ISO14443AListOptions<'a> {
+impl<'r, 'id> TagListOptions<'r> for ISO14443AListOptions<'id> {
+    type Response = ISO14443A<'r>;
+
     fn fill_buf(&self, buf: &mut [u8]) -> usize {
         use ::core::cmp::min;
 
@@ -210,6 +227,7 @@ impl<'a> TagListOptions for ISO14443AListOptions<'a> {
     }
 }
 
+/*
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum PollingMethod {
     Probabilistic,
@@ -289,3 +307,4 @@ impl TagListOptions for JewelTagListOptions {
         2
     }
 }
+*/

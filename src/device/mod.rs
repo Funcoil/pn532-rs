@@ -4,7 +4,7 @@ pub mod tags_internal;
 use ::bus;
 use self::proto::PN532Proto;
 use ::error::{CommResult, CommError, RecvError, DataError};
-use device::tags_internal::{TagType, TagBuffer, Tags};
+use device::tags_internal::{TagListOptions, TagResponse, TagBuffer, Tags};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum SAMMode {
@@ -75,9 +75,7 @@ impl<D: bus::WaitRead + bus::BusWrite> PN532<D> {
         }
     }
 
-    pub fn list_tags<'s, 'opt, 'inf, T>(&'s mut self, options: <T as TagType<'opt, 'inf>>::Options, buf: &'inf mut TagBuffer) -> CommResult<Tags<'inf, 's, T, Self>, D::ReadError, D::WriteError> where T: for<'o> TagType<'o, 'inf> {
-        use self::tags_internal::TagListOptions;
-
+    pub fn list_tags<'buf, 's, O: TagListOptions<'buf>>(&'s mut self, options: O, buf: &'buf mut TagBuffer) -> CommResult<Tags<'s, O::Response, Self>, D::ReadError, D::WriteError> where for<'r> <O as TagListOptions<'buf>>::Response: TagResponse<'r> {
         unsafe {
             let raw_buf = ::core::intrinsics::transmute::<&mut TagBuffer, &mut [u8; 256]>(buf);
             raw_buf[0] = 0x4A;
