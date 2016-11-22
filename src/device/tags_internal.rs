@@ -15,6 +15,8 @@ pub trait TagResponse<'s>: 's + Sized {
 
 pub trait TagResponseMarker<'s>: TagResponse<'s> {}
 
+impl<'a, T: TagResponse<'a>> TagResponseMarker<'a> for T {}
+
 pub trait TagListOptions<'a> {
     type Response: TagResponse<'a>;
 
