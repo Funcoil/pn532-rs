@@ -75,7 +75,7 @@ impl<D: bus::WaitRead + bus::BusWrite> PN532<D> {
         }
     }
 
-    pub fn list_tags<'buf, 's, O: TagListOptions<'buf>>(&'s mut self, options: O, buf: &'buf mut TagBuffer) -> CommResult<Tags<'s, O::Response, Self>, D::ReadError, D::WriteError> where for<'r> <O as TagListOptions<'buf>>::Response: TagResponse<'r> {
+    pub fn list_tags<'buf, 's, O: TagListOptions<'buf>>(&'s mut self, options: O, buf: &'buf mut TagBuffer) -> CommResult<Tags<'s, 'buf, O::Response, Self>, D::ReadError, D::WriteError> where for<'r> <O as TagListOptions<'buf>>::Response: TagResponse<'r> {
         unsafe {
             let raw_buf = ::core::intrinsics::transmute::<&mut TagBuffer, &mut [u8; 256]>(buf);
             raw_buf[0] = 0x4A;

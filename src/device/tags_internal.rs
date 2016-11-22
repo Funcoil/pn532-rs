@@ -44,20 +44,23 @@ impl TagBuffer {
     }
 }
 
-pub struct Tags<'p, R: for<'r> TagResponse<'r>, P: 'p + PN532Transceive> {
+pub struct Tags<'p, 'r, R: 'r + TagResponse<'r>, P: 'p + PN532Transceive> {
     response: R,
     // pn532 which detected the tags
     pn532: &'p mut P,
     count: usize,
+    // Why the hell is this needed if 'r is actually used in R?
+    _phantom: ::core::marker::PhantomData<&'r ()>,
 }
 
-impl<'p, R: for<'r> TagResponse<'r>, P: 'p + PN532Transceive> Tags<'p, R, P> {
+impl<'p, 'r, R: 'r + TagResponse<'r>, P: 'p + PN532Transceive> Tags<'p, 'r, R, P> {
     // Unsafe because TagBuffer is not guaranteed to be initialized
-    pub unsafe fn new(buf: &TagBuffer, pn532: &'p mut P) -> Self {
+    pub unsafe fn new(buf: &'r TagBuffer, pn532: &'p mut P) -> Self {
         Tags {
             response: R::new(&buf.buf[2..]),
             pn532: pn532,
-            count: buf.buf[1] as usize
+            count: buf.buf[1] as usize,
+            _phantom: Default::default(),
         }
     }
 
@@ -65,24 +68,27 @@ impl<'p, R: for<'r> TagResponse<'r>, P: 'p + PN532Transceive> Tags<'p, R, P> {
         self.count
     }
 
-    pub fn first(self) -> Tag<'p, R, P> {
+    pub fn first(self) -> Tag<'p, 'r, R, P> {
         let count = self.count();
         Tag {
             response: self.response,
             pn532: self.pn532,
             last: count != 2,
+            _phantom: Default::default(),
         }
     }
 }
 
-pub struct Tag<'p, R: for<'r> TagResponse<'r>, P: 'p + PN532Transceive> {
+pub struct Tag<'p, 'r, R: 'r + TagResponse<'r>, P: 'p + PN532Transceive> {
     response: R,
     // pn532 which detected the tag
     pn532: &'p mut P,
     last: bool,
+    // Why the hell is this needed if 'r is actually used in R?
+    _phantom: ::core::marker::PhantomData<&'r ()>,
 }
 
-impl<'p, R: for<'r> TagResponse<'r>, P: 'p + PN532Transceive> Tag<'p, R, P> {
+impl<'p, 'r, R: 'r + TagResponse<'r>, P: 'p + PN532Transceive> Tag<'p, 'r, R, P> {
     pub fn next(self) -> Option<Self> {
         if self.last {
             None
@@ -91,6 +97,7 @@ impl<'p, R: for<'r> TagResponse<'r>, P: 'p + PN532Transceive> Tag<'p, R, P> {
                 response: self.response.next(),
                 pn532: self.pn532,
                 last: true,
+                _phantom: Default::default(),
             })
         }
     }
@@ -184,7 +191,7 @@ impl<'a> ISO14443A<'a> {
     }
 }
 
-impl<'r, 'p, P: PN532Transceive> Tag<'p, ISO14443A<'r>, P> where for<'r2> ISO14443A<'r>: TagResponse<'r2> {
+impl<'r, 'p, P: PN532Transceive> Tag<'p, 'r, ISO14443A<'r>, P> {
     pub fn sens_res(&self) -> u16 {
         ((self.response.buf()[1] as u16) << 8) | (self.response.buf()[2] as u16)
     }

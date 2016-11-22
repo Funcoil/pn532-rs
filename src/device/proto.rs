@@ -46,7 +46,7 @@ impl ResponseParser {
         *self = match *self {
             Preamble(pp)                              => pp.next(b)
                                                            .map_or(Length, Preamble),
-            Length => LengthChksum(b),
+            Length                                    => LengthChksum(b),
             LengthChksum(l) if l.wrapping_add(b) == 0 => FrameIdentifier(l),
             FrameIdentifier(l) if b == 0xD5           => Done(l),
             Done(l)                                   => Done(l),
