@@ -4,7 +4,7 @@ pub mod tags_internal;
 use ::bus;
 use self::proto::PN532Proto;
 use ::error::{CommResult, CommError, RecvError, DataError};
-use device::tags_internal::{TagListOptions, TagResponse, TagBuffer, Tags};
+use device::tags_internal::{TagListOptions, TagBuffer, Tags};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum SAMMode {
