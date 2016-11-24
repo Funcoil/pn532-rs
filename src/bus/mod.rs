@@ -3,9 +3,11 @@
 #[cfg(feature = "with_i2c")]
 pub mod i2c;
 
-use ::error::{WaitError, WaitResult};
-use std::time::Duration;
-use std::{time, thread};
+pub mod busy_wait;
+
+pub use self::busy_wait::BusyWait;
+
+use ::error::WaitResult;
 use std::error::Error;
 
 /// Abstracts reading from device over different busses (I2C, SPI, ...)
@@ -36,78 +38,17 @@ pub trait WaitRead {
 
     /// Blocks until device sends data, then reads the data.
     fn wait_read(&mut self, buf: &mut [u8]) -> Result<usize, Self::ReadError>;
+}
 
+/// Extends ability to wait with ability to timeout.
+pub trait WaitReadTimeout: WaitRead {
+    type Duration;
     /// Blocks until device sends data or operation times out,
     /// then reads the data or returns `Err(WaitError::Timeout)`.
     /// The timeout doesn't need to be exact.
-    fn wait_read_timeout(&mut self, buf: &mut [u8], timeout: Duration) -> WaitResult<usize, Self::ReadError>;
+    fn wait_read_timeout(&mut self, buf: &mut [u8], timeout: Self::Duration) -> WaitResult<usize, Self::ReadError>;
 }
 
-/// Implements busy waiting for PN532 to be ready
-pub struct BusyWait<D: BusRead + BusWrite> {
-    device: D,
-    delay: Duration,
-}
-
-impl<D: BusRead + BusWrite> BusyWait<D> {
-    /// Enables busy waiting with default delay.
-    pub fn new(device: D) -> Self {
-        BusyWait {
-            device: device,
-            delay: Duration::from_millis(190)
-        }
-    }
-
-    /// Enables busy waiting with custom delay.
-    pub fn with_delay(device: D, delay: Duration) -> Self {
-        BusyWait {
-            device: device,
-            delay: delay
-        }
-    }
-
-    // One wait iteration
-    fn wait_iter(&mut self, buf: &mut [u8]) -> Result<bool, D::ReadError> {
-        thread::sleep(self.delay);
-
-        try!(self.device.read(buf));
-
-        Ok(buf[0] & 1 == 1)
-    }
-}
-
-impl<D: BusRead + BusWrite> WaitRead for BusyWait<D> {
-    type ReadError = D::ReadError;
-
-    fn wait_read(&mut self, buf: &mut [u8]) -> Result<usize, Self::ReadError> {
-        loop {
-            if try!(self.wait_iter(buf)) {
-                return Ok(buf.len());
-            }
-        }
-    }
-
-    fn wait_read_timeout(&mut self, buf: &mut [u8], timeout: Duration) -> WaitResult<usize, Self::ReadError> {
-        let start_time = time::Instant::now();
-        loop {
-            if try!(self.wait_iter(buf)) {
-                return Ok(buf.len());
-            }
-
-            if start_time.elapsed() > timeout {
-                return Err(WaitError::Timeout);
-            }
-        }
-    }
-}
-
-impl <D: BusRead + BusWrite> BusWrite for BusyWait<D> {
-    type WriteError = D::WriteError;
-
-    fn write(&mut self, buf: &[u8]) -> Result<(), Self::WriteError> {
-        self.device.write(buf)
-    }
-}
 
 #[cfg(test)]
 mod test {

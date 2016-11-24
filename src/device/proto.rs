@@ -1,6 +1,5 @@
 use ::bus;
-use ::std::time::Duration;
-use ::error::{DataError, ChecksumType, RecvError, SendError, WaitError, WaitResult, CommResult};
+use ::error::{DataError, ChecksumType, RecvError, SendError, WaitResult, CommResult};
 use ::std::default::Default;
 
 // State machine to parse Preamble.
@@ -177,8 +176,10 @@ impl<D: bus::WaitRead + bus::BusWrite> PN532Proto<D> {
         try!(self.send_ack());
         Ok(len)
     }
+}
 
-    pub fn recv_with_timeout(&mut self, data: &mut[u8], timeout: Duration) -> WaitResult<usize, RecvError<D::ReadError>> {
+impl<D: bus::WaitRead + bus::WaitReadTimeout + bus::BusWrite> PN532Proto<D> {
+    pub fn recv_with_timeout(&mut self, data: &mut[u8], timeout: D::Duration) -> WaitResult<usize, RecvError<D::ReadError>> {
         let mut buf = [0u8; 32];
         let len = try!(self.device.wait_read_timeout(&mut buf, timeout).map_err(|e| e.map(RecvError::ReadError)));
 
