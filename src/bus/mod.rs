@@ -5,7 +5,9 @@ pub mod i2c;
 
 pub mod busy_wait;
 
-pub use self::busy_wait::BusyWait;
+pub use self::busy_wait::BusyWait as GenericBusyWait;
+
+pub type BusyWait<T> = GenericBusyWait<T, ::std::time::Instant>;
 
 use ::error::WaitResult;
 use std::error::Error;
@@ -91,7 +93,7 @@ mod test {
         use ::std::time::{Duration, Instant};
         let mut buf = [0u8; 42];
         let begin = Instant::now();
-        let mut busy_wait = BusyWait::<NeverReady, Instant>::new(NeverReady);
+        let mut busy_wait = BusyWait::new(NeverReady);
         match busy_wait.wait_read_timeout(&mut buf, Duration::from_secs(1)) {
             Err(WaitError::Timeout) => (),
             Err(e) => panic!("{}", e),
