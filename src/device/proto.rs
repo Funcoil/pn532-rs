@@ -322,7 +322,7 @@ mod test {
     }
 
     // buf to proto
-    fn b2p<'a>(buf: &'a [u8]) -> super::PN532Proto<::bus::BusyWait<BufSender<'a>>> {
+    fn b2p<'a>(buf: &'a [u8]) -> super::PN532Proto<::bus::BusyWait<BufSender<'a>, ::std::time::Instant>> {
         use super::PN532Proto;
         use ::bus::BusyWait;
 
@@ -436,7 +436,7 @@ mod test {
 
         let mut recvbuf = [0u8; 256];
         let echo = Echo::new();
-        let busy_wait = BusyWait::new(echo);
+        let busy_wait = BusyWait::<Echo, ::std::time::Instant>::new(echo);
         let mut proto = PN532Proto::new(busy_wait);
 
         proto.send(&[]).unwrap();

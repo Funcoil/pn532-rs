@@ -91,7 +91,7 @@ mod test {
         use ::std::time::{Duration, Instant};
         let mut buf = [0u8; 42];
         let begin = Instant::now();
-        let mut busy_wait = BusyWait::new(NeverReady);
+        let mut busy_wait = BusyWait::<NeverReady, Instant>::new(NeverReady);
         match busy_wait.wait_read_timeout(&mut buf, Duration::from_secs(1)) {
             Err(WaitError::Timeout) => (),
             Err(e) => panic!("{}", e),
